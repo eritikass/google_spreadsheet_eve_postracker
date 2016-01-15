@@ -500,7 +500,6 @@ function create_tower_list() {
   var timeStamp = d.getTime(); // ms > time
   var last_time = sheet_raw.getRange('C' + ROW_DATES).getValue();
   
-  
   // only update once after 6h
   if (last_time && !isNaN(last_time) && (timeStamp < (last_time + 6*60*60*1000))) {
       Logger.log("cached (" + timeStamp + "  @ " + last_time + ")...");
@@ -634,10 +633,24 @@ function create_tower_list() {
     // TODO: FIXME - this should calcaulate fuel from date given in xml
     var fuelUntil_unix_ms = timeStamp + (60 * 60 * fuelHLeft * 1000);
     sheet_raw.getRange(COL_DB_TIMESTAMP + index).setValue(new Date(fuelUntil_unix_ms));
-
-
     
-    sheet_raw.getRange(COL_FUELLEFT + index).setFormula("=getFuelLeftTime(" + COL_POS_SYS + index + "; " + COL_POS_PLANET + index + "; " + COL_POS_MOON + index + ")");
+    
+    //var dateUntil = new Date(valueOnlineUntil);
+    var timestamp_untilonline = Math.floor(fuelUntil_unix_ms / 1000);
+        
+    var d2 = new Date();
+    var timestamp_now = Math.floor(d2.getTime() / 1000);
+
+
+    var difsec = timestamp_untilonline - timestamp_now;
+    var dif_h = parseInt(difsec/60/60, 10);
+    
+    var left_h = dif_h%24;
+    var left_d = (dif_h-left_h)/24;
+    
+    sheet_raw.getRange(COL_FUELLEFT + index).setValue(left_d + "d " + left_h + "h");
+    
+    //sheet_raw.getRange(COL_FUELLEFT + index).setFormula("=getFuelLeftTime(" + COL_POS_SYS + index + "; " + COL_POS_PLANET + index + "; " + COL_POS_MOON + index + ")");
     
     sheet_raw.getRange(COL_STAT + index).setValue('ok');
     
