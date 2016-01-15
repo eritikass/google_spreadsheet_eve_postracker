@@ -21,12 +21,11 @@ var COL_POS_PLANET = 'C';
 var COL_POS_MOON = 'D';
 var COL_POS_REGION = 'E';
 var COL_POS_TOWERTYPE = 'F';
-var COL_POS_ONLINEUNTIL = 'G';
 var COL_DB_MOONID = 'H';
-var COL_DB_TOWERID = 'I';
-var COL_DB_TIMESTAMP = 'J';
-var COL_STAT = 'K';
-var COL_FUELBLOCKS = 'L';
+var COL_DB_TOWERID = 'G';;
+var COL_DB_TIMESTAMP = 'I';
+var COL_STAT = 'J';
+var COL_FUELBLOCKS = 'K';
 
 /// *** DO NOT CHAGNE AFTER THAT LINE *** ///
 
@@ -372,7 +371,6 @@ var POS_DATA = {
 
 var ROW_START = 4;
 
-
 function getFuelLeftTime(system, planet, moon) {
   if (!system && !moon & !planet) {
     return '';
@@ -502,6 +500,7 @@ function create_tower_list() {
   var timeStamp = d.getTime(); // ms > time
   var last_time = sheet_raw.getRange('C' + ROW_DATES).getValue();
   
+  
   // only update once after 6h
   if (last_time && !isNaN(last_time) && (timeStamp < (last_time + 6*60*60*1000))) {
       Logger.log("cached (" + timeStamp + "  @ " + last_time + ")...");
@@ -510,7 +509,7 @@ function create_tower_list() {
   
   // update data
   sheet_raw.getRange('A' + ROW_DATES).setValue("updated:");
-//  sheet_raw.getRange('C' + ROW_DATES).setValue(timeStamp);
+  sheet_raw.getRange('C' + ROW_DATES).setValue(timeStamp);
   sheet_raw.getRange('B' + ROW_DATES).setValue(helper_date_to_str(d));
  
   // table columns
@@ -523,7 +522,7 @@ function create_tower_list() {
   sheet_raw.getRange(COL_POS_REGION + ROW_COLS).setValue("region");
   
   sheet_raw.getRange(COL_POS_TOWERTYPE + ROW_COLS).setValue("towerType");
-  sheet_raw.getRange(COL_POS_ONLINEUNTIL + ROW_COLS).setValue("online until");
+  //sheet_raw.getRange(COL_POS_ONLINEUNTIL + ROW_COLS).setValue("online until");
   
   sheet_raw.getRange(COL_DB_MOONID + ROW_COLS).setValue("db:moonID");
   sheet_raw.getRange(COL_DB_TOWERID + ROW_COLS).setValue("db:towerID");
@@ -592,6 +591,8 @@ function create_tower_list() {
     
     var index = towers[moonID].index;
     sheet_raw.getRange(COL_DB_MOONID + index).setValue(moonID);
+    sheet_raw.getRange(COL_DB_TOWERID + index).setValue(towers[moonID].towerID);
+    
     
     if (!POS_DATA[towers[moonID].typeID]) {
       sheet_raw.getRange(COL_STAT + index).setValue("ERR");
@@ -646,3 +647,4 @@ function create_tower_list() {
   
   
 }
+
