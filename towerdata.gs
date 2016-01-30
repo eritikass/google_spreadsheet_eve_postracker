@@ -375,7 +375,13 @@ var POS_DATA = {
 
 var ROW_START = 4;
 
+
+// keep this function for now as alias for getFuelLeftTime_tmplist as it was defined already before
 function getFuelLeftTime(system, planet, moon) {
+  return  getFuelLeftTime_tmplist(system, planet, moon);
+}
+
+function getFuelLeftTime_tmplist(system, planet, moon) {
   if (!system && !moon & !planet) {
     return '';
   }
@@ -512,6 +518,7 @@ function get_tower_list(eveapi_keyid, eveapi_vcode, extra) {
     towers[moonjson[index].moonID].moon = moonjson[index];
   }
   
+  var OUT = {};
   
   for (var moonID in towers) {
     
@@ -523,6 +530,18 @@ function get_tower_list(eveapi_keyid, eveapi_vcode, extra) {
     }
     
     var index = towers[moonID].index;
+    var moon = towers[moonID].moon;
+    
+    // {onlySystem: system, onlyPlanet: planet, onlyMoon: moon}
+    if (extra.onlySystem && extra.onlySystem.trim().toLocaleLowerCase() != moon.systemName.trim().toLocaleLowerCase()) {
+      continue;
+    }
+    if (extra.onlyPlanet && parseInt(extra.onlyPlanet, 10) != parseInt(moon.planet, 10)) {
+      continue;
+    }
+    if (extra.onlyMoon && parseInt(extra.onlyMoon, 10) != parseInt(moon.moon, 10)) {
+      continue;
+    }
 
     
     if (!POS_DATA[towers[moonID].typeID]) {
@@ -579,14 +598,43 @@ function get_tower_list(eveapi_keyid, eveapi_vcode, extra) {
       'str': left_d + "d " + left_h + "h",
     };
     
+    
+    OUT[moonID] = towers[moonID];
   }
   
   // debug
-  Logger.log(towers);
+  Logger.log(OUT);
   
-  return towers;
+  return OUT;
   
   
+}
+
+
+function getFuelLeftTime_apifetch(system, planet, moon) {
+  if (!system || !planet || !moon) {
+    return "";
+  }
+  
+  if (!eveapi_keyid && !eveapi_vcode && eveapi_keyid_alt && eveapi_vcode_alt) {
+    var doc = SpreadsheetApp.getActive();
+    var sheet_raw = doc.getSheetByName(RAWDATA_SHEET_NAME);
+    if (!sheet_raw) {
+      return "fix your apiconfig";
+    }
+    
+    eveapi_keyid = sheet_raw.getRange(eveapi_keyid_alt).getValue();
+    eveapi_vcode = sheet_raw.getRange(eveapi_vcode_alt).getValue();
+  }
+  
+  var towers = get_tower_list(eveapi_keyid, eveapi_vcode, {onlySystem: system, onlyPlanet: planet, onlyMoon: moon});
+  
+  for(var moonID in towers) {
+    var tower = towers[moonID];
+    return tower.fuelleft.str;
+  }    
+  
+  return "not-found";
 }
 
 function show_tower_list() {
