@@ -6,71 +6,63 @@
 // $dbpasswd - db password
 // $dbname_evedump - db database name
 include dirname(dirname(dirname(__FILE__))) . '/ee/config.php';
+// create connection
+$mysqli = new mysqli($dbhost, $dbuser, $dbpasswd, $dbname_evedump);
 
-$moonids = $json_out = array();
-
-// get valid moon id's
-foreach (preg_split("/[\s,;]+/", isset($_GET['moonIDs']) ? $_GET['moonIDs'] : '') as $moonId) {
-	if (is_numeric($moonId)) {
-		$moonids[(int)$moonId] = (int)$moonId;
-	}
+/* check connection */
+if ($mysqli->connect_errno) {
+	printf("Connect failed: %s\n", $mysqli->connect_error);
+	exit();
 }
 
-if (count($moonids) > 2048 ) {
-	exit("sorry: max 2048 per request");
-}
+$json_out = array();
 
-$outStrJson = '[]';
-if ($moonids) {
+$query = "SELECT * FROM tower_static";
+$result = $mysqli->query($query);
+if ($result) {
+	$sizes = array('3' => 'large', '2' => 'medium', '1' => 'small');
+	$tiers = array('faction' => array(7, 9, 13, 8, 14), 'subfaction' => array(6, 10, 12, 11, 5), 't1' => array(1,2,3,4));
+	$fuelUse = array(
+		't1' 		=> array('large' => 40, 'medium' => 20, 'small' => 10),
+		'subfaction'=> array('large' => 36, 'medium' => 18, 'small' => 9),
+		'faction'	=> array('large' => 32, 'medium' => 16, 'small' => 8),
+	);
+	$fuelBlocks = array('Helium' => 4247, 'Oxygen' => 4312, 'Nitrogen' => 4051, 'Hydrogen' => 4246);
 	
-	$cache_moonlist = dirname(__FILE__) . '/cache/moonjson/' . md5(json_encode($moonids)) . '.json';
-	
-	if (file_exists($cache_moonlist)) {
-	    $outStrJson = file_get_contents($cache_moonlist);
-		//touch($cache_moonlist);
-	} else {
-	
-		// create connection
-		$mysqli = new mysqli($dbhost, $dbuser, $dbpasswd, $dbname_evedump);
-	
-		/* check connection */
-		if ($mysqli->connect_errno) {
-			printf("Connect failed: %s\n", $mysqli->connect_error);
-			exit();
-		}
-	
-		// fetch moons
-		// tables from old pos tracker db - i guess you can query same data also from eve dump with some effort
-		$query = "SELECT m.moonID, m.moonName, m.systemID, m.systemName, m.regionID, m.regionName, pm.celestialIndex planet, pm.orbitIndex moon ".
-			" FROM `evemoons` m ".
-			" INNER JOIN tblmoons pm ON pm.itemID = m.moonID ".
-			" WHERE m.moonID IN ('" . implode("', '", $moonids) . "') ".
-			" ORDER BY m.regionName ASC, m.systemName ASC, m.moonName ASC ";
-	
-		$result = $mysqli->query($query);
-		if ($result) {
-			while($row = $result->fetch_array(MYSQLI_ASSOC))
-			{
-				$json_out[] = $row;
-			}
-			/* free result set */
-			$result->close();
-		}
-	
-		/* close connection */
-		$mysqli->close();
-	
-		$outStrJson = json_encode($json_out);
+	while($row = $result->fetch_array(MYSQLI_ASSOC))
+	{
+		$size =  isset($sizes[$row['pos_size']]) ? $sizes[$row['pos_size']] : '';
+		$tier = '?'; 
 		
-		file_put_contents($cache_moonlist, $outStrJson);
+		foreach ($tiers as $tier_ => $races) {
+			if (in_array($row['pos_race'], $races)) {
+				$tier = $tier_;
+				break;
+			}
+		}
+		
+		$json_out[$row['typeID']] = array(
+			'typeID' => $row['typeID'],
+			'typeName' => $row['typeName'],
+			'fuel' => array(
+				'hour' => $fuelUse[$tier][$size],
+				'typeID'=> $fuelBlocks[$row['race_isotope']],
+			),
+	#		'fuelh' => $fuelUse[$tier][$size],
+	#		'fuelId' => $fuelBlocks[$row['race_isotope']],
+	#		'size' => $size,
+	#		'tier' => $tier,
+	#		'pos_race' => $row['pos_race'],
+	#		'tmp' =>  $row,
+		);
 	}
+	/* free result set */
+	$result->close();
 }
 
+/* close connection */
+$mysqli->close();
 
-if (!empty($_GET['callback'])) {
-	header("Content-type: text/javascript");
-	echo $_GET['callback'] . '(' . $outStrJson . ');';
-} else {
-	header("Content-type: application/json");
-	echo $outStrJson;
-}
+header("Content-type: application/json");
+echo json_encode($json_out);
+
