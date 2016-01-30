@@ -16,44 +16,61 @@ foreach (preg_split("/[\s,;]+/", isset($_GET['moonIDs']) ? $_GET['moonIDs'] : ''
 	}
 }
 
+if (count($moonids) > 2048 ) {
+	exit("sorry: max 2048 per request");
+}
+
+$outStrJson = '[]';
 if ($moonids) {
-
-	// create connection
-	$mysqli = new mysqli($dbhost, $dbuser, $dbpasswd, $dbname_evedump);
-
-	/* check connection */
-	if ($mysqli->connect_errno) {
-		printf("Connect failed: %s\n", $mysqli->connect_error);
-		exit();
-	}
-
-	// fetch moons
-	$query = "SELECT moonID, moonName, systemID, systemName, regionID, regionName ".
-		" FROM `evemoons` ".
-		" WHERE moonID IN ('" . implode("', '", $moonids) . "') ".
-		" ORDER BY regionName ASC, systemName ASC, moonName ASC ";
-
-	$result = $mysqli->query($query);
-	if ($result) {
-		while($row = $result->fetch_array(MYSQLI_ASSOC))
-		{
-			$json_out[] = $row;
+	
+	$cache_moonlist = dirname(__FILE__) . '/cache/moonjson/' . md5(json_encode($moonids)) . '.json';
+	
+	if (file_exists($cache_moonlist)) {
+	    $outStrJson = file_get_contents($cache_moonlist);
+		//touch($cache_moonlist);
+	} else {
+	
+		// create connection
+		$mysqli = new mysqli($dbhost, $dbuser, $dbpasswd, $dbname_evedump);
+	
+		/* check connection */
+		if ($mysqli->connect_errno) {
+			printf("Connect failed: %s\n", $mysqli->connect_error);
+			exit();
 		}
-		/* free result set */
-		$result->close();
+	
+		// fetch moons
+		// tables from old pos tracker db - i guess you can query same data also from eve dump with some effort
+		$query = "SELECT m.moonID, m.moonName, m.systemID, m.systemName, m.regionID, m.regionName, pm.celestialIndex planet, pm.orbitIndex moon ".
+			" FROM `evemoons` m ".
+			" INNER JOIN tblmoons pm ON pm.itemID = m.moonID ".
+			" WHERE m.moonID IN ('" . implode("', '", $moonids) . "') ".
+			" ORDER BY m.regionName ASC, m.systemName ASC, m.moonName ASC ";
+	
+		$result = $mysqli->query($query);
+		if ($result) {
+			while($row = $result->fetch_array(MYSQLI_ASSOC))
+			{
+				$json_out[] = $row;
+			}
+			/* free result set */
+			$result->close();
+		}
+	
+		/* close connection */
+		$mysqli->close();
+	
+		$outStrJson = json_encode($json_out);
+		
+		file_put_contents($cache_moonlist, $outStrJson);
 	}
-
-	/* close connection */
-	$mysqli->close();
-
 }
 
 
 if (!empty($_GET['callback'])) {
 	header("Content-type: text/javascript");
-	echo $_GET['callback'] . '(' . json_encode($json_out) . ');';
+	echo $_GET['callback'] . '(' . $outStrJson . ');';
 } else {
 	header("Content-type: application/json");
-	echo json_encode($json_out);
+	echo $outStrJson;
 }
-
