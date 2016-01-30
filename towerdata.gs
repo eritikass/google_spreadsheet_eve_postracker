@@ -461,21 +461,10 @@ function getFuelLeftTime(system, planet, moon) {
   return 'err1';
 }
 
-function get_tower_list() {
-  
-  if (!eveapi_keyid && !eveapi_vcode && eveapi_keyid_alt && eveapi_vcode_alt) {
-    var doc = SpreadsheetApp.getActive();
-    var sheet_raw = doc.getSheetByName(RAWDATA_SHEET_NAME);
+
+function get_tower_list(eveapi_keyid, eveapi_vcode, extra) {
     
-    eveapi_keyid = sheet_raw.getRange(eveapi_keyid_alt).getValue();
-    eveapi_vcode = sheet_raw.getRange(eveapi_vcode_alt).getValue();
-  }
-   
-  if (!eveapi_keyid || !eveapi_vcode) {
-    Browser.msgBox("check your api key config in " + RAWDATA_SHEET_NAME);
-    return;
-  }
-  
+  extra = extra || {};
   
   var d = new Date();
   var timeStamp = d.getTime(); // ms > time
@@ -496,6 +485,10 @@ function get_tower_list() {
     var towerID = rows[i].getAttribute('itemID').getValue();
     var moonID = rows[i].getAttribute('moonID').getValue();
     var typeID = rows[i].getAttribute('typeID').getValue();
+    
+    if (extra.onlymoonID && extra.onlymoonID != moonID) {
+       continue; 
+    }
     
     moonIds.push(moonID);
     
@@ -521,6 +514,7 @@ function get_tower_list() {
   
   
   for (var moonID in towers) {
+    
     if (isNaN(towers[moonID].index)) {
       // incase json err
       towers[moonID].error = true;
@@ -548,8 +542,8 @@ function get_tower_list() {
  
     var fuelblocks = 0;
     for (var i in rows) {
-      var typeID = rows[i].getAttribute('typeID');
-    
+      var typeID = rows[i].getAttribute('typeID').getValue();
+      
       if (towers[moonID].pos.fuel.typeID == typeID) {
         fuelblocks = rows[i].getAttribute('quantity').getValue();
         break;
@@ -597,6 +591,7 @@ function get_tower_list() {
 
 function show_tower_list() {
   
+  
   var doc = SpreadsheetApp.getActive();
   var sheet_raw = doc.getSheetByName(RAWDATA_SHEET_NAME);
   if (!sheet_raw) {
@@ -604,7 +599,17 @@ function show_tower_list() {
      return;
   }
   
-  var towers = get_tower_list();
+  if (!eveapi_keyid && !eveapi_vcode && eveapi_keyid_alt && eveapi_vcode_alt) {
+    eveapi_keyid = sheet_raw.getRange(eveapi_keyid_alt).getValue();
+    eveapi_vcode = sheet_raw.getRange(eveapi_vcode_alt).getValue();
+  }
+   
+  if (!eveapi_keyid || !eveapi_vcode) {
+    Browser.msgBox("check your api key config in " + RAWDATA_SHEET_NAME);
+    return;
+  }
+
+  var towers = get_tower_list(eveapi_keyid, eveapi_vcode);
   
   var ROW_COLS = ROW_START+1;
   
