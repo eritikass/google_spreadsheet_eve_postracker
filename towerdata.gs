@@ -549,9 +549,10 @@ function get_tower_list() {
     var fuelblocks = 0;
     for (var i in rows) {
       var typeID = rows[i].getAttribute('typeID');
-      
-      if (towers[moonID].pos.fuel.typeID == '4246') {
+    
+      if (towers[moonID].pos.fuel.typeID == typeID) {
         fuelblocks = rows[i].getAttribute('quantity').getValue();
+        break;
       }
     }
     
@@ -647,7 +648,6 @@ function show_tower_list() {
     sheet_raw.getRange(COL_FUELBLOCKS + rowNumber).setValue(tower.fuelblocks);
     
   }
-
   
 }
 
