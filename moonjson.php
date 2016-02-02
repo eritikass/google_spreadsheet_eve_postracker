@@ -9,6 +9,8 @@ include dirname(dirname(dirname(__FILE__))) . '/ee/config.php';
 
 $moonids = $json_out = array();
 
+$extended = !empty($_GET['extended']) ? '.extended' : '';
+
 // get valid moon id's
 foreach (preg_split("/[\s,;]+/", isset($_GET['moonIDs']) ? $_GET['moonIDs'] : '') as $moonId) {
 	if (is_numeric($moonId)) {
@@ -23,8 +25,8 @@ if (count($moonids) > 2048 ) {
 $outStrJson = '[]';
 if ($moonids) {
 	
-	$cache_moonlist = dirname(__FILE__) . '/cache/moonjson/' . md5(json_encode($moonids)) . '.json';
-	
+	$cache_moonlist = dirname(__FILE__) . '/cache/moonjson/' . md5(json_encode($moonids)) . $extended . '.json';
+
 	if (file_exists($cache_moonlist)) {
 	    $outStrJson = file_get_contents($cache_moonlist);
 		//touch($cache_moonlist);
@@ -42,16 +44,36 @@ if ($moonids) {
 		// fetch moons
 		// tables from old pos tracker db - i guess you can query same data also from eve dump with some effort
 		$query = "SELECT m.moonID, m.moonName, m.systemID, m.systemName, m.regionID, m.regionName, pm.celestialIndex planet, pm.orbitIndex moon ".
+			($extended ? " , pm.x, pm.y, pm.z " : "").
 			" FROM `evemoons` m ".
 			" INNER JOIN tblmoons pm ON pm.itemID = m.moonID ".
 			" WHERE m.moonID IN ('" . implode("', '", $moonids) . "') ".
 			" ORDER BY m.regionName ASC, m.systemName ASC, m.moonName ASC ";
+			
+			#echo $query;
 	
 		$result = $mysqli->query($query);
 		if ($result) {
 			while($row = $result->fetch_array(MYSQLI_ASSOC))
 			{
-				$json_out[] = $row;
+				if ($extended) {
+					$json_out[] = array(
+						'moonID' => (int)$row['moonID'],
+						'moonName' => $row['moonName'],
+						'systemID' => (int)$row['systemID'],
+						'systemName' => $row['systemName'],
+						'regionID' => (int)$row['regionID'],
+						'regionName' => $row['regionName'],
+						'planet' => (int)$row['planet'],
+						'moon' => (int)$row['moon'],
+						'x' => (int)$row['x'],
+						'y' => (int)$row['y'],
+						'z' => (int)$row['z'],
+					);
+				} else {
+					$json_out[] = $row;
+				}
+
 			}
 			/* free result set */
 			$result->close();
